@@ -247,3 +247,53 @@ contract CoreMicroBank {
         // In real deployment: transfer USDT from contract vault
     }
 }
+/**
+ * Register user
+
+Event: UserRegistered
+
+Agent records deposit
+
+Event: DepositRecorded
+
+Event: ProtocolFeeAccumulated
+
+After ~3 seconds
+
+Call convertFeesAndStake()
+
+Event: FeesConvertedToLiquid
+
+Event: LiquidStaked
+
+Request loan
+
+Event: LoanRequested
+
+Event: LoanIssued
+
+Wait a few seconds
+
+Call accrueInterest()
+
+Event: InterestAccrued
+
+Repay loan
+
+Event: LoanRepaid
+
+Withdraw
+
+Event: WithdrawalProcessed
+
+Your frontend can subscribe to events and visually show:
+
+Fee chopping
+
+Conversion
+
+Staking
+
+Loan growth
+ * 
+ */
