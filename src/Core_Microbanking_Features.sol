@@ -247,6 +247,25 @@ contract CoreMicroBank {
         // In real deployment: transfer USDT from contract vault
     }
 }
+/**Chainlink Price Feeds
+ * Price Feeds are READ-ONLY
+
+They live on-chain
+
+Your contract calls them
+
+Frontend never calls Chainlink directly
+ 
+ smartcontractkit/chainlink
+ -AggregatorV3Interface
+-Automation interfaces
+-VRF (not needed for now)
+
+ */
+
+
+
+
 /**
  * Register user
 
