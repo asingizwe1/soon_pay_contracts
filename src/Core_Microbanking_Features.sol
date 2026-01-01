@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+
 /**
  * @title CoreMicroBank
  * @author Louis Asingizwe
@@ -17,6 +19,8 @@ contract CoreMicroBank {
     uint256 public constant BPS_DENOMINATOR = 10_000;
     uint256 public constant BORROW_LIMIT_BPS = 5_000; // 50%
     uint256 public constant ANNUAL_INTEREST_BPS = 1_000; // 10% APR
+AggregatorV3Interface public ugxUsdFeed;//store oracle address
+
 
     /*//////////////////////////////////////////////////////////////
                                OWNER
@@ -97,6 +101,9 @@ contract CoreMicroBank {
 
     constructor() {
         owner = msg.sender;
+        //HelperConfig exists (we’ll come back to it)
+         //network flexibility comes from.->allows aby network - Sepolia,local Anvil,anychain
+         ugxUsdFeed = AggregatorV3Interface(_ugxUsdFeed); 
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -245,6 +252,18 @@ contract CoreMicroBank {
 
         emit WithdrawalProcessed(userId, to, amount);
         // In real deployment: transfer USDT from contract vault
+
+
+    /*//////////////////////////////////////////////////////////////
+                            GETPRICEFEED
+    //////////////////////////////////////////////////////////////*/
+//“We normalize all deposits into USD-equivalent stable units using Chainlink Price Feeds.”
+function getUGXtoUSD() public view returns (uint256) {
+    (, int price,,,) = ugxUsdFeed.latestRoundData();
+    return uint256(price);
+}
+
+
     }
 }
 /**Chainlink Price Feeds
