@@ -2,6 +2,8 @@
 pragma solidity ^0.8.19;
 
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
+
 
 /**
  * @title CoreMicroBank
@@ -9,7 +11,9 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/Ag
  * @notice Custodial microbanking core with deposits, fees, loans, and yield
  * @dev Hackathon-grade, event-heavy, demo-friendly architecture
  */
-contract CoreMicroBank {
+
+//AutomationCompatibleInterface-> Automation, your contract MUST have these functions
+contract CoreMicroBank is AutomationCompatibleInterface {
 
     /*//////////////////////////////////////////////////////////////
                                CONSTANTS
@@ -47,6 +51,53 @@ AggregatorV3Interface public ugxUsdFeed;//store oracle address
     }
 
     mapping(bytes32 => User) public users;
+
+ /*//////////////////////////////////////////////////////////////
+                         PROTOCOL CHAINLINK AUTOMATION
+    //////////////////////////////////////////////////////////////*/
+/**Automation should run IF:
+- protocolFeePool > 0 */
+function checkUpkeep(
+    bytes calldata /* checkData */
+)
+    external
+    view
+    override
+    returns (bool upkeepNeeded, bytes memory /* performData */)
+{
+    upkeepNeeded = protocolFeePool > 0;
+}
+//perform upkeep- if checkUpkeep returned true
+function performUpkeep(
+    bytes calldata /* performData */
+) external override {
+    // 1. Re-check condition
+    if (protocolFeePool == 0) {
+        return;
+    }
+
+    // 2. Simulate price (later replace with real feed)
+    uint256 mockLiquidPrice = 1e18; // demo value
+
+    // 3. Convert & stake
+    uint256 usdtAmount = protocolFeePool;
+    uint256 liquidAmount = usdtAmount / mockLiquidPrice;
+
+    protocolFeePool = 0;
+    totalLiquidStaked += liquidAmount;
+
+    // 4. Emit events
+    emit FeesConvertedToLiquid(
+        usdtAmount,
+        liquidAmount,
+        mockLiquidPrice,
+        block.timestamp
+    );
+
+    emit LiquidStaked(liquidAmount, totalLiquidStaked);
+}
+
+
 
     /*//////////////////////////////////////////////////////////////
                          PROTOCOL ACCOUNTING
@@ -334,4 +385,31 @@ Staking
 
 Loan growth
  * 
+ */
+
+/**
+ * Chainlink Automation does ONLY TWO THINGS:
+
+1️ checkUpkeep
+
+Called off-chain
+
+Asks:
+
+“Should I do something right now?”
+
+Returns:
+
+true → yes, call performUpkeep
+
+false → do nothing
+
+2️ performUpkeep
+
+Called on-chain
+
+Actually executes the action
+
+ Automation NEVER decides what your protocol logic is
+It only checks conditions you define
  */
