@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatibleInterface.sol";
+import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
+import {AutomationCompatible} from "@chainlink/contracts/src/v0.8/automation/AutomationCompatible.sol";
 
 
 /**
@@ -13,18 +13,37 @@ import "@chainlink/contracts/src/v0.8/automation/interfaces/AutomationCompatible
  */
 
 //AutomationCompatibleInterface-> Automation, your contract MUST have these functions
-contract CoreMicroBank is AutomationCompatibleInterface {
+contract CoreMicroBank is AutomationCompatible  {
 
     /*//////////////////////////////////////////////////////////////
                                CONSTANTS
     //////////////////////////////////////////////////////////////*/
-
+uint256 public lastGlobalInterestRun;
+uint256 public constant INTEREST_INTERVAL = 1 days;
+///interest constants above
     uint256 public constant FEE_BPS = 500; // 5%
     uint256 public constant BPS_DENOMINATOR = 10_000;
     uint256 public constant BORROW_LIMIT_BPS = 5_000; // 50%
     uint256 public constant ANNUAL_INTEREST_BPS = 1_000; // 10% APR
 AggregatorV3Interface public ugxUsdFeed;//store oracle address
 
+
+    /*//////////////////////////////////////////////////////////////
+                               EVENTS
+    //////////////////////////////////////////////////////////////*/
+event UserLiquidated(
+    bytes32 indexed userId,
+    uint256 debtCleared,
+    uint256 collateralSeized,
+    uint256 timestamp
+);
+
+event UserStateViewed(
+    bytes32 indexed userId,
+    uint256 deposit,
+    uint256 debt,
+    uint256 timestamp
+);
 
     /*//////////////////////////////////////////////////////////////
                                OWNER
@@ -52,6 +71,22 @@ AggregatorV3Interface public ugxUsdFeed;//store oracle address
 
     mapping(bytes32 => User) public users;
 
+
+    /*//////////////////////////////////////////////////////////////
+                               USERSTATE
+    //////////////////////////////////////////////////////////////*/
+    /**Live dashboards,Demo buttons,Visual proof of state changes */
+function emitUserState(bytes32 userId) external {
+    User storage u = users[userId];
+    emit UserStateViewed(
+        userId,
+        u.depositBalance,
+        u.loanDebt,
+        block.timestamp
+    );
+}
+
+
  /*//////////////////////////////////////////////////////////////
                          PROTOCOL CHAINLINK AUTOMATION
     //////////////////////////////////////////////////////////////*/
@@ -65,12 +100,25 @@ function checkUpkeep(
     override
     returns (bool upkeepNeeded, bytes memory /* performData */)
 {
-    upkeepNeeded = protocolFeePool > 0;
+    bool interestDue = (block.timestamp - lastGlobalInterestRun) >= INTEREST_INTERVAL;
+
+    upkeepNeeded = protocolFeePool > 0|| interestDue;
 }
 //perform upkeep- if checkUpkeep returned true
 function performUpkeep(
     bytes calldata /* performData */
 ) external override {
+//“Chainlink Automation guarantees time-based interest correctness
+// without looping users, preserving gas efficiency.”
+
+// Pseudo: liquidation target passed via performData
+
+
+if ((block.timestamp - lastGlobalInterestRun) >= INTEREST_INTERVAL) {
+    lastGlobalInterestRun = block.timestamp;
+    // interest accrual happens lazily per user
+}
+
     // 1. Re-check condition
     if (protocolFeePool == 0) {
         return;
@@ -95,6 +143,34 @@ function performUpkeep(
     );
 
     emit LiquidStaked(liquidAmount, totalLiquidStaked);
+}
+
+    /*//////////////////////////////////////////////////////////////
+                         LIQUIDATION CHECK
+    //////////////////////////////////////////////////////////////*/
+    //“Automation flags risk conditions, liquidation can be executed by agents to avoid looping users on-chain.”
+function isLiquidatable(bytes32 userId) public view returns (bool) {
+    User storage u = users[userId];
+    if (!u.exists) return false;
+    return u.loanDebt > maxBorrowable(userId);
+}
+function _liquidate(bytes32 userId) internal {
+    User storage u = users[userId];
+
+    uint256 seized = u.depositBalance;
+    uint256 debt = u.loanDebt;
+
+    u.depositBalance = 0;
+    u.loanDebt = 0;
+
+    protocolFeePool += seized;
+
+    emit UserLiquidated(userId, debt, seized, block.timestamp);
+}
+//“Automation flags risk, agents execute liquidation”
+function liquidate(bytes32 userId) external {
+    require(isLiquidatable(userId), "Not liquidatable");
+    _liquidate(userId);
 }
 
 
@@ -150,10 +226,10 @@ function performUpkeep(
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor() {
+    constructor(address _ugxUsdFeed) {
         owner = msg.sender;
         //HelperConfig exists (we’ll come back to it)
-         //network flexibility comes from.->allows aby network - Sepolia,local Anvil,anychain
+         //network flexibility comes from.->allows aNy network - Sepolia,local Anvil,anychain
          ugxUsdFeed = AggregatorV3Interface(_ugxUsdFeed); 
     }
 
@@ -179,7 +255,9 @@ function performUpkeep(
     /*//////////////////////////////////////////////////////////////
                               DEPOSITS
     //////////////////////////////////////////////////////////////*/
-
+//“This is an agent-assisted custodial system.
+//Physical cash / mobile money is received off-chain, and on-chain accounting reflects custody.”
+//a real microfinance model, especially in Africa.
     function recordDeposit(bytes32 userId, uint256 amount) external {
         User storage u = users[userId];
         require(u.exists, "User not found");
@@ -304,18 +382,18 @@ function performUpkeep(
         emit WithdrawalProcessed(userId, to, amount);
         // In real deployment: transfer USDT from contract vault
 
-
+    }
     /*//////////////////////////////////////////////////////////////
                             GETPRICEFEED
     //////////////////////////////////////////////////////////////*/
 //“We normalize all deposits into USD-equivalent stable units using Chainlink Price Feeds.”
-function getUGXtoUSD() public view returns (uint256) {
-    (, int price,,,) = ugxUsdFeed.latestRoundData();
-    return uint256(price);
+function getUGXtoUSD() public view returns (uint256 price, uint8 decimals) {
+    (, int answer,,,) = ugxUsdFeed.latestRoundData();
+    return (uint256(answer), ugxUsdFeed.decimals());
 }
 
 
-    }
+    
 }
 /**Chainlink Price Feeds
  * Price Feeds are READ-ONLY
@@ -413,3 +491,63 @@ Actually executes the action
  Automation NEVER decides what your protocol logic is
 It only checks conditions you define
  */
+
+
+/**
+ * “Time-based interest automation”
+ * Interest automation does NOT mint money.
+ * 
+ * updates the borrower’s debt over time
+based on how long the loan has been outstanding
+
+ *Interest only increases when:
+-requestLoan
+-repayLoan
+-manual accrueInterest() 
+
+ */
+
+/**
+ * LIQUIDATION
+
+For hackathon safety:
+
+Cancel the loan
+
+Seize collateral
+
+Move seized funds to protocol
+
+NO DEX swaps, NO complexity.
+ */
+
+/**
+ * Where liquidation money goes
+
+Borrower loses part (or all) of deposit
+
+Protocol absorbs loss
+
+Ensures solvency
+
+ */
+/**“Each deposit charges a 5% protocol fee.
+Fees are pooled inside the contract.
+Using Chainlink Automation, the protocol periodically converts those fees into a yield-bearing Liquid position.
+This conversion is event-driven and fully transparent on-chain.” */
+
+/**❌ NOT :
+
+A real ERC20 “Liquid” token exists
+
+Tokens are transferred
+
+DEX swaps happen
+
+✅ DOES:
+
+You modeled yield generation
+
+You modeled protocol revenue
+
+You showed automated treasury management */
