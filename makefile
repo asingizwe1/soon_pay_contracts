@@ -82,3 +82,7 @@ test:
 # Contract successfully verified
 # asingizwe1@DESKTOP-JMR591K:/mnt/f/SOON_PAY_HACKATHON/soon_pay_contracts$ 
 
+# make deploy > deploy.log 2>&1
+# This will:
+
+# save all terminal output
