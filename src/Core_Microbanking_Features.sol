@@ -160,7 +160,10 @@ if ((block.timestamp - lastGlobalInterestRun) >= INTEREST_INTERVAL) {
     );
 
     emit LiquidStaked(liquidAmount, totalLiquidStaked);
-}
+}emit ProtocolLiquidBalanceUpdated(
+    IERC20(address(liquidToken)).balanceOf(address(this)),
+    block.timestamp
+);
 
     /*//////////////////////////////////////////////////////////////
                          LIQUIDATION CHECK
@@ -310,6 +313,11 @@ function liquidate(bytes32 userId) external {
   // 🔥 ACTUAL TOKEN MINT
     liquidToken.mint(address(this), liquidAmount);
 
+emit ProtocolLiquidBalanceUpdated(
+    IERC20(address(liquidToken)).balanceOf(address(this)),
+    block.timestamp
+);
+
         emit FeesConvertedToLiquid(
             usdtAmount,
             liquidAmount,
@@ -415,6 +423,12 @@ function liquidate(bytes32 userId) external {
 
     // Send LIQ bonus
     IERC20(address(liquidToken)).transfer(to, bonus);
+
+// ✅ EMIT PROTOCOL LIQ BALANCE
+emit ProtocolLiquidBalanceUpdated(
+    IERC20(address(liquidToken)).balanceOf(address(this)),
+    block.timestamp
+);
 
         emit WithdrawalProcessed(userId, to, amount);
         // In real deployment: transfer USDT from contract vault
