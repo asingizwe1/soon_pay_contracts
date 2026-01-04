@@ -3,17 +3,26 @@ pragma solidity ^0.8.19;
 
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol";
 import {AutomationCompatible} from "@chainlink/contracts/src/v0.8/automation/AutomationCompatible.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 
-/**
+/**       ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
  * @title CoreMicroBank
  * @author Louis Asingizwe
  * @notice Custodial microbanking core with deposits, fees, loans, and yield
  * @dev Hackathon-grade, event-heavy, demo-friendly architecture
  */
 
+    /*//////////////////////////////////////////////////////////////
+                               INTERFACES
+    //////////////////////////////////////////////////////////////*/
+interface IMockLiquid {
+    function mint(address to, uint256 amount) external;
+}
+
+
 //AutomationCompatibleInterface-> Automation, your contract MUST have these functions
-contract CoreMicroBank is AutomationCompatible  {
+contract CoreMicroBank is AutomationCompatible{
 
     /*//////////////////////////////////////////////////////////////
                                CONSTANTS
@@ -26,6 +35,8 @@ uint256 public constant INTEREST_INTERVAL = 1 days;
     uint256 public constant BORROW_LIMIT_BPS = 5_000; // 50%
     uint256 public constant ANNUAL_INTEREST_BPS = 1_000; // 10% APR
 AggregatorV3Interface public ugxUsdFeed;//store oracle address
+IMockLiquid public liquidToken;
+uint256 public constant WITHDRAW_BONUS_BPS = 200; // 2%
 
 
     /*//////////////////////////////////////////////////////////////
@@ -37,6 +48,12 @@ event UserLiquidated(
     uint256 collateralSeized,
     uint256 timestamp
 );
+
+event ProtocolLiquidBalanceUpdated(
+    uint256 newBalance,
+    uint256 timestamp
+);
+
 
 event UserStateViewed(
     bytes32 indexed userId,
@@ -231,6 +248,7 @@ function liquidate(bytes32 userId) external {
         //HelperConfig exists (we’ll come back to it)
          //network flexibility comes from.->allows aNy network - Sepolia,local Anvil,anychain
          ugxUsdFeed = AggregatorV3Interface(_ugxUsdFeed); 
+    liquidToken = IMockLiquid(_liquidToken);
     }
 
     /*//////////////////////////////////////////////////////////////
@@ -288,6 +306,9 @@ function liquidate(bytes32 userId) external {
 
         protocolFeePool = 0;
         totalLiquidStaked += liquidAmount;
+
+  // 🔥 ACTUAL TOKEN MINT
+    liquidToken.mint(address(this), liquidAmount);
 
         emit FeesConvertedToLiquid(
             usdtAmount,
@@ -368,6 +389,13 @@ function liquidate(bytes32 userId) external {
                              WITHDRAWAL
     //////////////////////////////////////////////////////////////*/
 
+// User withdraws
+
+// Gets a LIQ bonus
+
+// Protocol yield decreases
+
+// Economic loop makes sense
     function withdraw(bytes32 userId, uint256 amount, address to) external {
         User storage u = users[userId];
         require(u.exists, "User not found");
@@ -378,6 +406,15 @@ function liquidate(bytes32 userId) external {
         require(amount <= u.depositBalance, "Insufficient balance");
 
         u.depositBalance -= amount;
+
+   // 🎁 incentive from protocol yield
+    uint256 bonus = (amount * WITHDRAW_BONUS_BPS) / BPS_DENOMINATOR;
+
+    require(totalLiquidStaked >= bonus, "Insufficient yield");
+    totalLiquidStaked -= bonus;
+
+    // Send LIQ bonus
+    IERC20(address(liquidToken)).transfer(to, bonus);
 
         emit WithdrawalProcessed(userId, to, amount);
         // In real deployment: transfer USDT from contract vault

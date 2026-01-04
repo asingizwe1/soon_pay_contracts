@@ -2,8 +2,8 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Script.sol";
-import "../src/MockLiquid.sol";
-import "../src/CoreMicroBank.sol";
+import "../src/Mock_Liquid.sol";
+import "../src/Core_MicroBanking_Features.sol";
 import "../src/MockV3Aggregator.sol";
 
 contract DeployContracts is Script {
