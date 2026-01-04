@@ -160,10 +160,11 @@ if ((block.timestamp - lastGlobalInterestRun) >= INTEREST_INTERVAL) {
     );
 
     emit LiquidStaked(liquidAmount, totalLiquidStaked);
-}emit ProtocolLiquidBalanceUpdated(
+emit ProtocolLiquidBalanceUpdated(
     IERC20(address(liquidToken)).balanceOf(address(this)),
     block.timestamp
 );
+}
 
     /*//////////////////////////////////////////////////////////////
                          LIQUIDATION CHECK
@@ -246,7 +247,7 @@ function liquidate(bytes32 userId) external {
                               CONSTRUCTOR
     //////////////////////////////////////////////////////////////*/
 
-    constructor(address _ugxUsdFeed) {
+    constructor(address _ugxUsdFeed,address _liquidToken) {
         owner = msg.sender;
         //HelperConfig exists (we’ll come back to it)
          //network flexibility comes from.->allows aNy network - Sepolia,local Anvil,anychain
@@ -443,6 +444,15 @@ function getUGXtoUSD() public view returns (uint256 price, uint8 decimals) {
     return (uint256(answer), ugxUsdFeed.decimals());
 }
 
+/*//////////////////////////////////////////////////////////////
+                    PROTOCOL READ HELPERS
+//////////////////////////////////////////////////////////////*/
+// With one RPC call, your UI can show:
+// 🟢 “Protocol currently holds X LIQ”
+function protocolLiquidBalance() external view returns (uint256) {
+    return IERC20(address(liquidToken)).balanceOf(address(this));
+}
+
 
     
 }
@@ -602,3 +612,12 @@ You modeled yield generation
 You modeled protocol revenue
 
 You showed automated treasury management */
+
+// MockLiquid
+// 0x563B5f693a4385389305A0D535594fB3a4f190aA
+
+// MockV3Aggregator (UGX/USD)
+// 0xA5a220109DC1565F14A75e834f7070B8bDE62799
+
+// CoreMicroBank
+// 0x56590500e1651613050FC03A21Fe90AA8FE7823C
