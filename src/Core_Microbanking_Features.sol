@@ -302,7 +302,8 @@ function liquidate(bytes32 userId) external {
      * @notice Simulates USDT → Liquid conversion & staking
      * @dev In production this would be Chainlink Automation
      */
-    function convertFeesAndStake(uint256 mockLiquidPrice) external onlyOwner {
+    function convertFeesAndStake(uint256 mockLiquidPrice) external //onlyOwner 
+    {
         require(protocolFeePool > 0, "No fees");
 
         uint256 usdtAmount = protocolFeePool;
@@ -312,11 +313,11 @@ function liquidate(bytes32 userId) external {
         totalLiquidStaked += liquidAmount;
 
   // 🔥 ACTUAL TOKEN MINT
-    liquidToken.mint(address(this), liquidAmount);
+      liquidToken.mint(address(this), liquidAmount);
 
-emit ProtocolLiquidBalanceUpdated(
-    IERC20(address(liquidToken)).balanceOf(address(this)),
-    block.timestamp
+     emit ProtocolLiquidBalanceUpdated(
+      IERC20(address(liquidToken)).balanceOf(address(this)),
+      block.timestamp
 );
 
         emit FeesConvertedToLiquid(
