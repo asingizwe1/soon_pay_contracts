@@ -87,3 +87,25 @@ test:
 # This will:
 
 # save all terminal output
+
+#TO TEST INTERNAL STORAGE
+#asingizwe1@DESKTOP-JMR591K:/mnt/f/SOON_PAY_HACKATHON/soon_pay_contracts$ cast call 0x0a2292F60c3C6dEf399bFe8c526D1b9AC3E37f5E \
+#   "protocolFeePool()(uint256)" \
+#   --rpc-url $SEPOLIA_RPC_URL
+# 0
+# asingizwe1@DESKTOP-JMR591K:/mnt/f/SOON_PAY_HACKATHON/soon_pay_contracts$ cast call 0x0a2292F60c3C6dEf399bFe8c526D1b9AC3E37f5E \
+#   "totalLiquidStaked()(uint256)" \
+#   --rpc-url $SEPOLIA_RPC_URL
+
+# cast call 0x0a2292F60c3C6dEf399bFe8c526D1b9AC3E37f5E \
+#   "protocolLiquidBalance()(uint256)" \
+#   --rpc-url $SEPOLIA_RPC_URL
+# 0
+# 0
+# asingizwe1@DESKTOP-JMR591K:/mnt/f/SOON_PAY_HACKATHON/soon_pay_contracts$ 
+
+#check for infor attached to user id
+# cast call 0x0a2292F60c3C6dEf399bFe8c526D1b9AC3E37f5E \
+# "users(bytes32)(uint256,uint256,uint256,uint256,address,bool)" \
+# 0xc3ccf601d151e390dea9a373e6d349fad987cf841bf8135549bf2da8807ac87c \
+# --rpc-url $SEPOLIA_RPC_URL

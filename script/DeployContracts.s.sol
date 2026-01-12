@@ -43,6 +43,7 @@ console.log("MockV3Aggregator (UGX/USD) deployed at:", feedAddr);
     feedAddr,
     address(ml)
 );
+ml.transferOwnership(address(bank));
 
         console.log("CoreMicroBank deployed at:", address(bank));
 
