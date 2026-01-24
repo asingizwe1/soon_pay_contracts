@@ -417,14 +417,18 @@ function liquidate(bytes32 userId) external {
 
         u.depositBalance -= amount;
 
-   // 🎁 incentive from protocol yield
-    uint256 bonus = (amount * WITHDRAW_BONUS_BPS) / BPS_DENOMINATOR;
+// 🎁 incentive from protocol yield (human-visible scaling)
 
-    require(totalLiquidStaked >= bonus, "Insufficient yield");
-    totalLiquidStaked -= bonus;
+// 1 USD = 0.01 LIQ bonus
+uint256 liqPerUsd = 1e16; // 0.01 * 1e18
 
-    // Send LIQ bonus
-    IERC20(address(liquidToken)).transfer(to, bonus);
+uint256 bonus = amount * liqPerUsd;
+
+require(totalLiquidStaked >= bonus, "Insufficient yield");
+totalLiquidStaked -= bonus;
+
+// Send LIQ bonus
+IERC20(address(liquidToken)).transfer(to, bonus);
 
 // ✅ EMIT PROTOCOL LIQ BALANCE
 emit ProtocolLiquidBalanceUpdated(
