@@ -145,8 +145,9 @@ if ((block.timestamp - lastGlobalInterestRun) >= INTEREST_INTERVAL) {
     uint256 mockLiquidPrice = 1e18; // demo value
 
     // 3. Convert & stake
-    uint256 usdtAmount = protocolFeePool;
-    uint256 liquidAmount = usdtAmount / mockLiquidPrice;
+    uint256 liquidAmount = (usdtAmount * 1e18) / mockLiquidPrice;
+liquidToken.mint(address(this), liquidAmount);
+
 
     protocolFeePool = 0;
     totalLiquidStaked += liquidAmount;
