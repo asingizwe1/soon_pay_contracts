@@ -307,7 +307,8 @@ function liquidate(bytes32 userId) external {
         require(protocolFeePool > 0, "No fees");
 
         uint256 usdtAmount = protocolFeePool;
-        uint256 liquidAmount = usdtAmount / mockLiquidPrice;
+        //handling dp's at the point of minting liq
+        uint256 liquidAmount = (usdtAmount*1e18) / mockLiquidPrice;
 
         protocolFeePool = 0;
         totalLiquidStaked += liquidAmount;
